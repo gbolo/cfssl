@@ -28,6 +28,7 @@ ca:
 
 client:
 	source $(CONFIG); \
+	prepend=client; \
 	for i in "$${!CLIENTS[@]}"; do \
 		echo "GENERATING CLIENTS: $${i}"; \
 		sed "s/PLACEHOLDER/$${i}/" config/csr-generic.json | \
@@ -38,17 +39,18 @@ client:
 			-profile client \
 			-hostname "$${CLIENTS[$$i]}" \
 			- \
-			| $(JSON) -bare certs/client_$${i}; \
-		cat certs/client_$${i}.pem certs/ca_int.pem > certs/client_$${i}-chain.pem; \
+			| $(JSON) -bare certs/$${prepend}_$${i}; \
+		cat certs/$${prepend}_$${i}.pem certs/ca_int.pem certs/ca_root.pem > certs/$${prepend}_$${i}-chain.pem; \
 		openssl pkcs8 \
-			-in certs/client_$${i}-key.pem \
+			-in certs/$${prepend}_$${i}-key.pem \
 			-topk8 \
 			-nocrypt \
-			-out certs/client_$${i}-key.pk8.pem; \
+			-out certs/$${prepend}_$${i}-key.pk8.pem; \
 	done
 
 client-signedbyroot:
 	source $(CONFIG); \
+	prepend=client; \
 	for i in "$${!CLIENTS[@]}"; do \
 		echo "GENERATING CLIENTS: $${i}"; \
 		sed "s/PLACEHOLDER/$${i}/" config/csr-generic.json | \
@@ -59,39 +61,18 @@ client-signedbyroot:
 			-profile client \
 			-hostname "$${CLIENTS[$$i]}" \
 			- \
-			| $(JSON) -bare certs/client_$${i}; \
+			| $(JSON) -bare certs/$${prepend}_$${i}; \
 		cat certs/client_$${i}.pem certs/ca_root.pem > certs/client_$${i}-chain.pem; \
 		openssl pkcs8 \
-			-in certs/client_$${i}-key.pem \
+			-in certs/$${prepend}_$${i}-key.pem \
 			-topk8 \
 			-nocrypt \
-			-out certs/client_$${i}-key.pk8.pem; \
-		done
-
-server:
-	source $(CONFIG); \
-	for i in "$${!SERVERS[@]}"; do \
-		echo "GENERATING SERVER: $${i}"; \
-		sed "s/PLACEHOLDER/$${i}/" config/csr-generic.json | \
-		$(CFSSL) gencert \
-			-ca certs/ca_int.pem \
-			-ca-key certs/ca_int-key.pem \
-			-config config/signing-profiles.json \
-			-profile server \
-			-hostname "$${SERVERS[$$i]}" \
-			- \
-			| $(JSON) -bare certs/server_$${i}; \
-		cat certs/server_$${i}.pem certs/ca_int.pem > certs/server_$${i}-chain.pem; \
-		openssl pkcs8 \
-			-in certs/server_$${i}-key.pem \
-			-topk8 \
-			-nocrypt \
-			-out certs/server_$${i}-key.pk8.pem; \
+			-out certs/$${prepend}_$${i}-key.pk8.pem; \
 	done
-
 
 server-signedbyroot:
 	source $(CONFIG); \
+	prepend=server; \
 	for i in "$${!SERVERS[@]}"; do \
 		echo "GENERATING SERVER: $${i}"; \
 		sed "s/PLACEHOLDER/$${i}/" config/csr-generic.json | \
@@ -102,13 +83,57 @@ server-signedbyroot:
 			-profile server \
 			-hostname "$${SERVERS[$$i]}" \
 			- \
-			| $(JSON) -bare certs/server_$${i}; \
-		cat certs/server_$${i}.pem certs/ca_root.pem > certs/server_$${i}-chain.pem; \
+			| $(JSON) -bare certs/$${prepend}_$${i}; \
+		cat certs/$${prepend}_$${i}.pem certs/ca_root.pem > certs/$${prepend}_$${i}-chain.pem; \
 		openssl pkcs8 \
-			-in certs/server_$${i}-key.pem \
+			-in certs/$${prepend}_$${i}-key.pem \
 			-topk8 \
 			-nocrypt \
-			-out certs/server_$${i}-key.pk8.pem; \
+			-out certs/$${prepend}_$${i}-key.pk8.pem; \
+	done
+
+server-client-signedbyroot:
+	source $(CONFIG); \
+	prepend=server-client; \
+	for i in "$${!SERVERS[@]}"; do \
+		echo "GENERATING SERVER-CLIENT: $${i}"; \
+		sed "s/PLACEHOLDER/$${i}/" config/csr-generic.json | \
+		$(CFSSL) gencert \
+			-ca certs/ca_root.pem \
+			-ca-key certs/ca_root-key.pem \
+			-config config/signing-profiles.json \
+			-profile client-server \
+			-hostname "$${SERVERS[$$i]}" \
+			- \
+			| $(JSON) -bare certs/$${prepend}_$${i}; \
+		cat certs/$${prepend}_$${i}.pem certs/ca_root.pem > certs/$${prepend}_$${i}-chain.pem; \
+		openssl pkcs8 \
+			-in certs/$${prepend}_$${i}-key.pem \
+			-topk8 \
+			-nocrypt \
+			-out certs/$${prepend}_$${i}-key.pk8.pem; \
+	done
+
+server:
+	source $(CONFIG); \
+	prepend=server-client; \
+	for i in "$${!SERVERS[@]}"; do \
+		echo "GENERATING SERVER: $${i}"; \
+		sed "s/PLACEHOLDER/$${i}/" config/csr-generic.json | \
+		$(CFSSL) gencert \
+			-ca certs/ca_int.pem \
+			-ca-key certs/ca_int-key.pem \
+			-config config/signing-profiles.json \
+			-profile server \
+			-hostname "$${SERVERS[$$i]}" \
+			- \
+			| $(JSON) -bare certs/$${prepend}_$${i}; \
+		cat certs/$${prepend}_$${i}.pem certs/ca_int.pem certs/ca_root.pem > certs/$${prepend}_$${i}-chain.pem; \
+		openssl pkcs8 \
+			-in certs/$${prepend}_$${i}-key.pem \
+			-topk8 \
+			-nocrypt \
+			-out certs/$${prepend}_$${i}-key.pk8.pem; \
 	done
 
 clean:
