@@ -116,7 +116,7 @@ server-client-signedbyroot:
 
 server:
 	source $(CONFIG); \
-	prepend=server-client; \
+	prepend=server; \
 	for i in "$${!SERVERS[@]}"; do \
 		echo "GENERATING SERVER: $${i}"; \
 		sed "s/PLACEHOLDER/$${i}/" config/csr-generic.json | \
